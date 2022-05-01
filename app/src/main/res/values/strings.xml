@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">PathFinder</string>
+    <string name="TYPE_SERVER">TYPE_SERVER</string>
+    <string name="TYPE_CLIENT">TYPE_CLIENT</string>
+    <string name="dest">請輸入目的地:</string>
+    <string name="origin">請輸入出發地:</string>
+    <string name="path">規劃路徑</string>
+    <string name="title_activity_maps">MapsActivity</string>
+</resources>
