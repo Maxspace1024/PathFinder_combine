@@ -32,6 +32,7 @@ import java.io.*
 import java.lang.Exception
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
+import kotlin.collections.ArrayList
 import kotlin.math.PI
 import kotlin.math.acos
 import kotlin.math.sqrt
@@ -117,11 +118,9 @@ class MainActivity : AppCompatActivity() {
             // get the rotate degree
             val locList = ArrayList<LatLng>()
             val result = ArrayList<List<LatLng>>()
+            val path = ArrayList<LatLng>()
+            val joint = ArrayList<LatLng>()
             val gpsloc = locationManager()
-
-
-            val gpslng = LatLng(gpsloc!!.latitude,gpsloc.longitude)
-
 
             val destStr = dest.text.toString()
             if (destStr == null || destStr == "") {
@@ -131,6 +130,8 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(applicationContext,"Please open the GPS", Toast.LENGTH_SHORT).show()
             }
             else {
+                val gpslng = LatLng(gpsloc!!.latitude,gpsloc.longitude)
+
                 val client = OkHttpClient().newBuilder().build()
                 val request = Request.Builder().url(getDirectionURL(gpslng, destStr)).build()
                 runBlocking {
@@ -151,25 +152,21 @@ class MainActivity : AppCompatActivity() {
                                 respObj.routes[0].legs[0].end_location.lng.toDouble()
                             )
 
-                            locList.add(originloc)
-
+                            joint.add(originloc)
                             for (i in 0 until (respObj.routes[0].legs[0].steps.size)) {
-                                val startLatLng = LatLng(
-                                    respObj.routes[0].legs[0].steps[i].start_location.lat.toDouble(),
-                                    respObj.routes[0].legs[0].steps[i].start_location.lng.toDouble()
-                                )
-                                path.add(startLatLng)
-                                val endLatLng = LatLng(
+
+                                joint.add(LatLng(
                                     respObj.routes[0].legs[0].steps[i].end_location.lat.toDouble(),
                                     respObj.routes[0].legs[0].steps[i].end_location.lng.toDouble()
-                                )
-                                path.add(endLatLng)
-                                locList.add(endLatLng)
-//                            path.addAll(decodePolyline(respObj.routes[0].legs[0].steps[i].polyline.points))
+                                ))
+                                path.addAll(decodePolyline(respObj.routes[0].legs[0].steps[i].polyline.points))
                             }
-                            locList.add(destloc)
                             result.add(path)
-                            resultString = etUsername.text.toString() + "," + angle(locList[0],locList[1])
+
+                            joint.add(destloc)
+
+                            resultString = etUsername.text.toString() + "," + angle(path[0],path[1])
+                            Log.i("result",resultString)
                         }
                     }
                     job.join()
@@ -190,9 +187,8 @@ class MainActivity : AppCompatActivity() {
 
                 if(btDevice == null) Toast.makeText(this,"There is not a bounded device.",Toast.LENGTH_SHORT).show()
 
-
                 val intent2 = Intent(this, MapsActivity::class.java)
-                intent2.putExtra("path",locList)
+                intent2.putExtra("path",joint)
                 intent2.putExtra("result",result)
                 startActivity(intent2)
             }
@@ -595,5 +591,42 @@ class MainActivity : AppCompatActivity() {
             Log.d("myTag", "Security Exception, no location available")
         }
         return oriLocation
+    }
+
+    public fun decodePolyline(encoded: String): List<LatLng> {
+
+        val poly = ArrayList<LatLng>()
+        var index = 0
+        val len = encoded.length
+        var lat = 0
+        var lng = 0
+
+        while (index < len) {
+            var b: Int
+            var shift = 0
+            var result = 0
+            do {
+                b = encoded[index++].toInt() - 63
+                result = result or (b and 0x1f shl shift)
+                shift += 5
+            } while (b >= 0x20)
+            val dlat = if (result and 1 != 0) (result shr 1).inv() else result shr 1
+            lat += dlat
+
+            shift = 0
+            result = 0
+            do {
+                b = encoded[index++].toInt() - 63
+                result = result or (b and 0x1f shl shift)
+                shift += 5
+            } while (b >= 0x20)
+            val dlng = if (result and 1 != 0) (result shr 1).inv() else result shr 1
+            lng += dlng
+
+            val latLng = LatLng((lat.toDouble() / 1E5),(lng.toDouble() / 1E5))
+            poly.add(latLng)
+        }
+
+        return poly
     }
 }
