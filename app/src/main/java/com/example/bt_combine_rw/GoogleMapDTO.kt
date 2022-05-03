@@ -2,6 +2,7 @@ package com.example.bt_combine_rw
 
 class GoogleMapDTO {
     var routes = ArrayList<Routes>()
+    var status = ""
 }
 
 class Routes {

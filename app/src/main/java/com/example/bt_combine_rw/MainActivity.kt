@@ -121,6 +121,7 @@ class MainActivity : AppCompatActivity() {
             val path = ArrayList<LatLng>()
             val joint = ArrayList<LatLng>()
             val gpsloc = locationManager()
+            var flag = true
 
             val destStr = dest.text.toString()
             if (destStr == null || destStr == "") {
@@ -140,33 +141,40 @@ class MainActivity : AppCompatActivity() {
                         response.body?.run {
                             val data = string()
                             val respObj = Gson().fromJson(data, GoogleMapDTO::class.java)
-
-                            val path = ArrayList<LatLng>()
-
-                            val originloc = LatLng(
-                                respObj.routes[0].legs[0].start_location.lat.toDouble(),
-                                respObj.routes[0].legs[0].start_location.lng.toDouble()
-                            )
-                            val destloc = LatLng(
-                                respObj.routes[0].legs[0].end_location.lat.toDouble(),
-                                respObj.routes[0].legs[0].end_location.lng.toDouble()
-                            )
-
-                            joint.add(originloc)
-                            for (i in 0 until (respObj.routes[0].legs[0].steps.size)) {
-
-                                joint.add(LatLng(
-                                    respObj.routes[0].legs[0].steps[i].end_location.lat.toDouble(),
-                                    respObj.routes[0].legs[0].steps[i].end_location.lng.toDouble()
-                                ))
-                                path.addAll(decodePolyline(respObj.routes[0].legs[0].steps[i].polyline.points))
+                            val status = respObj.status
+                            Log.i("sssss",status)
+                            if (status != "OK"){
+                                flag = false
                             }
-                            result.add(path)
+                            else {
+                                val path = ArrayList<LatLng>()
 
-                            joint.add(destloc)
+                                val originloc = LatLng(
+                                    respObj.routes[0].legs[0].start_location.lat.toDouble(),
+                                    respObj.routes[0].legs[0].start_location.lng.toDouble()
+                                )
+                                val destloc = LatLng(
+                                    respObj.routes[0].legs[0].end_location.lat.toDouble(),
+                                    respObj.routes[0].legs[0].end_location.lng.toDouble()
+                                )
 
-                            resultString = etUsername.text.toString() + "," + angle(path[0],path[1])
-                            Log.i("result",resultString)
+                                joint.add(originloc)
+                                for (i in 0 until (respObj.routes[0].legs[0].steps.size)) {
+
+                                    joint.add(LatLng(
+                                        respObj.routes[0].legs[0].steps[i].end_location.lat.toDouble(),
+                                        respObj.routes[0].legs[0].steps[i].end_location.lng.toDouble()
+                                    ))
+                                    path.addAll(decodePolyline(respObj.routes[0].legs[0].steps[i].polyline.points))
+                                }
+                                result.add(path)
+
+                                joint.add(destloc)
+
+                                resultString =
+                                    etUsername.text.toString() + "," + angle(path[0], path[1])
+                                Log.i("result", resultString)
+                            }
                         }
                     }
                     job.join()
@@ -186,11 +194,13 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 if(btDevice == null) Toast.makeText(this,"There is not a bounded device.",Toast.LENGTH_SHORT).show()
-
-                val intent2 = Intent(this, MapsActivity::class.java)
-                intent2.putExtra("path",joint)
-                intent2.putExtra("result",result)
-                startActivity(intent2)
+                if(!flag) Toast.makeText(this,"未搜尋到目的地",Toast.LENGTH_SHORT).show()
+                else {
+                    val intent2 = Intent(this, MapsActivity::class.java)
+                    intent2.putExtra("path", joint)
+                    intent2.putExtra("result", result)
+                    startActivity(intent2)
+                }
             }
 
 
