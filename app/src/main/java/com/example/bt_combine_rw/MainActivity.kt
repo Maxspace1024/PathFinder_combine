@@ -33,9 +33,7 @@ import java.lang.Exception
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.collections.ArrayList
-import kotlin.math.PI
-import kotlin.math.acos
-import kotlin.math.sqrt
+import kotlin.math.*
 import kotlinx.coroutines.launch as launch
 
 class MainActivity : AppCompatActivity() {
@@ -121,6 +119,7 @@ class MainActivity : AppCompatActivity() {
             val path = ArrayList<LatLng>()
             val joint = ArrayList<LatLng>()
             val gpsloc = locationManager()
+            val temp = ArrayList<LatLng>()
 
             val destStr = dest.text.toString()
             if (destStr == null || destStr == "") {
@@ -163,9 +162,20 @@ class MainActivity : AppCompatActivity() {
                             }
                             result.add(path)
 
+                            temp.add(originloc)
+                            for (i in 1 .. (path.size - 1)){
+                                if (path[i-1] == path[i]) temp.add(path[i])
+                            }
+                            temp.add(destloc)
+
                             joint.add(destloc)
 
-                            resultString = etUsername.text.toString() + "," + angle(path[0],path[1])
+                            if (getDistance(joint[0],joint[1]) <= 15){
+                                resultString = etUsername.text.toString() + "," + angle(temp[1],temp[2])
+                            }
+                            else {
+                                resultString = etUsername.text.toString() + "," + angle(temp[0], temp[1])
+                            }
                             Log.i("result",resultString)
                         }
                     }
@@ -565,27 +575,28 @@ class MainActivity : AppCompatActivity() {
 
         }
         try{
-            if (isGPSEnabled && isNetworkEnabled){
-                locationManager.requestLocationUpdates(
-                    LocationManager.GPS_PROVIDER,
-                    5000, 0f, locationListener)
-                oriLocation1 = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+//            if (isGPSEnabled && isNetworkEnabled){
+//                locationManager.requestLocationUpdates(
+//                    LocationManager.GPS_PROVIDER,
+//                    5000, 0f, locationListener)
+//                oriLocation1 = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+//                locationManager.requestLocationUpdates(
+//                    LocationManager.NETWORK_PROVIDER,
+//                    5000, 0f, locationListener)
+//                oriLocation2 = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+//                if (oriLocation1 != oriLocation2) oriLocation = oriLocation2
+//            }
+            if (isNetworkEnabled) {
                 locationManager.requestLocationUpdates(
                     LocationManager.NETWORK_PROVIDER,
-                    5000, 0f, locationListener)
-                oriLocation2 = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-                if (oriLocation1 != oriLocation2) oriLocation = oriLocation2
+                    1000, 0f, locationListener)
+                oriLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
             }
             else if (isGPSEnabled) {
                 locationManager.requestLocationUpdates(
                     LocationManager.GPS_PROVIDER,
-                    5000, 0f, locationListener)
+                    1000, 0f, locationListener)
                 oriLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-            } else if (isNetworkEnabled) {
-                locationManager.requestLocationUpdates(
-                    LocationManager.NETWORK_PROVIDER,
-                    5000, 0f, locationListener)
-                oriLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
             }
         }catch(ex: SecurityException) {
             Log.d("myTag", "Security Exception, no location available")
@@ -628,5 +639,18 @@ class MainActivity : AppCompatActivity() {
         }
 
         return poly
+    }
+    private fun getDistance(start:LatLng, end: LatLng): Double{
+        val lat1 = (PI/180) * start.latitude
+        val lat2 = (PI/180) * end.latitude
+
+        val lon1 = (PI/180) * start.longitude
+        val lon2 = (PI/180) * end.longitude
+
+        val R = 6371
+
+        val d = acos(sin(lat1) *  sin(lat2) + cos(lat1) * cos(lat2) * cos(lon2 - lon1)) * R
+
+        return d * 1000
     }
 }
