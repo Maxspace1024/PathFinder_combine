@@ -78,10 +78,7 @@ class MainActivitySelection : AppCompatActivity() {
 //            var intentx = Intent(this,MainActivityClient::class.java)
 //            startActivity(intentx)
         }
-        btnSetServGPS.setOnClickListener {
-            val intentx = Intent(this,MapsActivityGPS::class.java)
-            startActivity(intentx)
-        }
+
     }
     private fun permission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)

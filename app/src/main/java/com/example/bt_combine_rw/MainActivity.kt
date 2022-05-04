@@ -89,8 +89,8 @@ class MainActivity : AppCompatActivity() {
             terminalType = intent.extras?.getString("type")
             if(terminalType == getString(R.string.TYPE_SERVER)){
                 //server side
+                //llllClientSide.visibility = View.GONE
                 llllClientSide2.visibility = View.GONE
-                llllClientSide.visibility = View.GONE
                 llllServerSide.visibility = View.VISIBLE
 
                 serverThread = ServerThread()
@@ -101,8 +101,8 @@ class MainActivity : AppCompatActivity() {
             }
             else if(terminalType == getString(R.string.TYPE_CLIENT)){
                 //client side
+                //llllClientSide.visibility = View.GONE
                 llllClientSide2.visibility = View.VISIBLE
-                llllClientSide.visibility = View.GONE
                 llllServerSide.visibility = View.GONE
 
             }
@@ -205,7 +205,10 @@ class MainActivity : AppCompatActivity() {
 
 
         }
-
+        ibtnSetServGPS.setOnClickListener {
+            val intentx = Intent(this,MapsActivityGPS::class.java)
+            startActivity(intentx)
+        }
         /*
         btnRunAsServ.setOnClickListener{
             btnSend.isEnabled = false

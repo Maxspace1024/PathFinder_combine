@@ -10,13 +10,6 @@
     android:background="@color/mainTint">
 
     <Button
-        android:id="@+id/btnSetServGPS"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="SetServGPS"
-        android:textAllCaps="false"/>
-
-    <Button
         android:id="@+id/btnSelectServ"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
