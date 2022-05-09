@@ -46,6 +46,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var deamonQueueInspecter : DeamonQueueInspector
     private val deamonQ = ConcurrentLinkedQueue<UserInfo>()
 
+    //gps location
+    private var gpsloc_serv = LatLng(24.123552,120.6731373)
+
     // name , rot degree
     private var resultString : String = ""
 
@@ -60,7 +63,7 @@ class MainActivity : AppCompatActivity() {
 
     enum class STATEE{
         LISTENING,CONNECTING,CONNECTED,CONNECTION_FAIL,MSG_RECV,
-        STREAM_DONE,UPDATE_DIRECTION_INFO
+        SEND_USERINFO,SEND_GPS_LOC,UPDATE_DIRECTION_INFO
     }
 
     private val APP_NAME : String = "BT_CHAT"
@@ -72,7 +75,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         supportActionBar?.hide()
 
-        //etServName.setText(SERVER_NAME)
 
         btManager = getSystemService(BluetoothManager::class.java)
         btAdapter = btManager.adapter
@@ -171,8 +173,7 @@ class MainActivity : AppCompatActivity() {
 
                                 joint.add(destloc)
 
-                                resultString =
-                                    etUsername.text.toString() + "," + angle(path[0], path[1])
+                                resultString = "${etUsername.text},${angle(path[0], path[1])},${destStr}"
                                 Log.i("result", resultString)
                             }
                         }
@@ -207,7 +208,7 @@ class MainActivity : AppCompatActivity() {
         }
         ibtnSetServGPS.setOnClickListener {
             val intentx = Intent(this,MapsActivityGPS::class.java)
-            startActivity(intentx)
+            startActivityForResult(intentx,9487)
         }
         /*
         btnRunAsServ.setOnClickListener{
@@ -249,16 +250,30 @@ class MainActivity : AppCompatActivity() {
          */
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        when(requestCode){
+            9487 ->{
+                var llat = data?.extras?.getString("llat")
+                var llng = data?.extras?.getString("llng")
+                Toast.makeText(this,"$llat,$llng\nset latlng",Toast.LENGTH_SHORT).show()
+
+                if( llat!=null && llng!=null){
+                    gpsloc_serv = LatLng(llat!!.toDouble(),llng!!.toDouble())
+                }
+            }
+        }
+    }
+
     var mainHandler = Handler(Looper.myLooper()!!,Handler.Callback {
         when(it.what){
             STATEE.LISTENING.ordinal        -> {}//tvStat2.setText("STATUS:"+"Listening...")
             STATEE.CONNECTING.ordinal       -> {}//tvStat2.setText("STATUS:"+"Connecting...")
             STATEE.CONNECTED.ordinal        -> {}//tvStat2.setText("STATUS:"+"Connected")
             STATEE.CONNECTION_FAIL.ordinal  -> {}//tvStat2.setText("STATUS:"+"Connection Failed")
-            STATEE.STREAM_DONE.ordinal      ->{
-                //var s = etMsg.text.toString()
+
+            STATEE.SEND_USERINFO.ordinal      ->{
                 sendReceive?.write(resultString.encodeToByteArray())
-//                sendReceive?.write(resultString)
 
                 Thread{
                     Thread.sleep(delayTime)
@@ -269,37 +284,46 @@ class MainActivity : AppCompatActivity() {
                     }
                 }.start()
             }
+            STATEE.SEND_GPS_LOC.ordinal     -> {
+                sendReceive?.write("asdfasdfasdf::".encodeToByteArray())
+            }
             STATEE.MSG_RECV.ordinal         -> {
                 var readbuf : ByteArray = it.obj as ByteArray
                 var tempMsg = readbuf.decodeToString()//String(readbuf,0,it.arg1)
-                val s = tempMsg.split(",")
 
-                /* deal with the incoming data "tempMsg"*/
-                try {
-                    Log.d("ssss","${s[0]}->${s[1]}")
-                    deamonQ.add(
-                        UserInfo(
-                            s[0],s[1].toFloat()
+                if(terminalType==getString(R.string.TYPE_SERVER)){
+                    val s = tempMsg.split(",")
+
+                    /* deal with the incoming data "tempMsg"*/
+                    try {
+                        //Log.d("ssss","${s[0]}->${s[1]}->${s[2]}")
+                        deamonQ.add(
+                            UserInfo(
+                                s[0],s[1].toFloat(),s[2]
+                            )
                         )
-                    )
-                }catch (e : Exception){
-                    e.printStackTrace()
-                }
-                /* deal with the incoming data "d"*/
-
-                Thread{
-                    // after server recv data
-                    // we will close serverThread
-                    Thread.sleep(delayTime)
-                    try{
-                        serverThread.cancel()
-                    }catch (e:Exception){
-                        Log.d("exp",e.toString())
+                    }catch (e : Exception){
+                        e.printStackTrace()
                     }
-                    Thread.sleep(delayTime)
-                    serverThread = ServerThread()
-                    serverThread.start()
-                }.start()
+                    /* deal with the incoming data "d"*/
+
+                    Thread{
+                        // after server recv data
+                        // we will close serverThread
+                        Thread.sleep(delayTime)
+                        try{
+                            serverThread.cancel()
+                        }catch (e:Exception){
+                            Log.d("exp",e.toString())
+                        }
+                        Thread.sleep(delayTime)
+                        serverThread = ServerThread()
+                        serverThread.start()
+                    }.start()
+                }
+                else if(terminalType==getString(R.string.TYPE_CLIENT)){
+                    Log.d("servloc","$tempMsg")
+                }
             }
             STATEE.UPDATE_DIRECTION_INFO.ordinal ->{
                 if(terminalType == getString(R.string.TYPE_SERVER)){
@@ -317,11 +341,14 @@ class MainActivity : AppCompatActivity() {
 
                     // prevent get the null object
                     if(q != null){
+                        tvDestination.text = q.destName
                         tvUsernameField.text = q.name
                         ivArrowField.rotation = q.rotDeg
                         tvStat2.text = "Wating in the Queue:${deamonQ.size}"
+
                     }
                     else{
+                        tvDestination.text = "N/A"
                         tvUsernameField.text = "N/A"
                         ivArrowField.rotation = 0.0f
                         tvStat2.text = "Wating in the Queue:0"
@@ -335,7 +362,8 @@ class MainActivity : AppCompatActivity() {
 
     data class UserInfo(
         val name : String = "",
-        val rotDeg : Float = 0.0f
+        val rotDeg : Float = 0.0f,
+        val destName : String = ""
     )
     private inner class DeamonQueueInspector : Thread() {
         private var isRunning = true
@@ -402,6 +430,11 @@ class MainActivity : AppCompatActivity() {
                     sendReceive = SendReceive(socket)
                     sendReceive?.start()
 
+                    /*
+                    mainHandler.sendMessage(
+                        Message().also{it.what = STATEE.SEND_GPS_LOC.ordinal}
+                    )
+                    */
                     //break
                     //tricky here for server side
                 }
@@ -440,7 +473,8 @@ class MainActivity : AppCompatActivity() {
                 sendReceive?.start()
 
                 mainHandler.sendMessage(
-                    Message().also{it.what = STATEE.STREAM_DONE.ordinal}
+                    //client send the userinfo
+                    Message().also{it.what = STATEE.SEND_USERINFO.ordinal}
                 )
             }catch (e : IOException){
                 e.printStackTrace()
@@ -472,17 +506,14 @@ class MainActivity : AppCompatActivity() {
         override fun run(){
             while(isRunning){
                 try {
-                    //var buf = reader!!.readLine().toCharArray()
                     var buf = ByteArray(1024)
                     var bytes =input!!.read(buf)
 
                     mainHandler
                         .obtainMessage(STATEE.MSG_RECV.ordinal,bytes,-1,buf)
-//                        .obtainMessage(STATEE.MSG_RECV.ordinal,buf.size,-1,buf)
                         .sendToTarget()
                 }catch (e : IOException){
                     e.printStackTrace()
-                    //isRunning=false
                 }
                 isRunning=false //important here for server side
             }
